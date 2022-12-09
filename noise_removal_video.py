@@ -1,39 +1,30 @@
-from PIL import Image
 import numpy as np
-import matplotlib.pyplot as plt
-import cv2
+import cv2 as cv
+from matplotlib import pyplot as plt
 
-mean = 0
-var = 10
-sigma = var ** 1
+cap = cv.VideoCapture('Marvels Spider-Man – Be Greater Extended Trailer _ PS4.mp4')
 
-# carrregando video escolhido para a variavel cap
-cap = cv2.VideoCapture('Marvel’s Spider-Man – Be Greater Extended Trailer _ PS4.mp4')
+# criar uma lista com os 5 primeiros frames do vídeo
+img = [cap.read()[1] for i in range(5)]
 
-# pegando o primeiro frame do vídeo
-img = [cap.read()[1] for i in range(0,1)]
-cv2.imwrite("frames/frame0.png", img[0])
+# converter para escala de cinza
+gray = [cv.cvtColor(i, cv.COLOR_BGR2GRAY) for i in img]
 
-# aplicando o ruído no frame, incrimentando o sigma em cada repetição (5x)
-for i in range(0,5):
-    img2 = cv2.imread("frames/frame{}.png".format(0))
-    gaussian = np.random.normal(mean, sigma + i, (720,1280,3)) #  np.zeros((224, 224), np.float32)
-    noisy_image = img2 + gaussian
-    cv2.imwrite("frames_noise/frame{}_noise.png".format(i), noisy_image)
+# conveter para float64
+gray = [np.float64(i) for i in gray]
 
-# abrindo as 5 imagens, o mesmo frame com 5 intensidades de ruídos diferentes
-frame_0 = np.array(Image.open('frames_noise/frame0_noise.png'))
-frame_1 = np.array(Image.open('frames_noise/frame1_noise.png'))
-frame_2 = np.array(Image.open('frames_noise/frame2_noise.png'))
-frame_3 = np.array(Image.open('frames_noise/frame3_noise.png'))
-frame_4 = np.array(Image.open('frames_noise/frame4_noise.png'))
-# aplicando a média aritimética nas 5 imagens
-frame_avg = ( frame_0.astype(np.float64)
-            + frame_1.astype(np.float64)
-            + frame_2.astype(np.float64)
-            + frame_3.astype(np.float64)
-            + frame_4.astype(np.float64)) / 5
-frame_avg = frame_avg.astype(np.uint8)
+# criando ruído com uma variancia de 25
+noise = np.random.randn(*gray[1].shape)*10
 
-# salvando a imagem
-Image.fromarray(frame_avg).save('result/noise_removal.png')
+# adicionando o ruído nas imagens
+noisy = [i+noise for i in gray]
+
+# Converter para int8
+noisy = [np.uint8(np.clip(i,0,255)) for i in noisy]
+
+# Removendo o ruído do terceiro frame
+dst = cv.fastNlMeansDenoisingMulti(noisy, 2, 5, None, 4, 7, 35)
+plt.subplot(131),plt.imshow(gray[2],'gray')
+plt.subplot(132),plt.imshow(noisy[2],'gray')
+plt.subplot(133),plt.imshow(dst,'gray')
+plt.show()
